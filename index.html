@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Paulo Amoroso - Calculadora de Seção de Condutor</title>
+  <!-- Ícones via CDN (Font Awesome) -->
+  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    header { text-align: center; margin-bottom: 30px; }
+    header h1 { margin: 0; }
+    header p { color: #555; }
+    .icon { font-size: 2rem; margin-bottom: 10px; }
+    label { display: block; margin-top: 15px; }
+    input, select { width: 100%; padding: 8px; margin-top: 5px; }
+    button { margin-top: 20px; padding: 10px 20px; font-size: 16px; cursor: pointer; }
+    .resultado { margin-top: 20px; font-weight: bold; }
+    footer { margin-top: 40px; text-align: center; color: #777; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="icon"><i class="fas fa-bolt"></i></div>
+    <h1>Paulo Amoroso</h1>
+    <p>Engenheiro Elétrico • Gerente de Projetos</p>
+  </header>
+
+  <main>
+    <label>Potência da carga (W):
+      <input type="number" id="potencia" required>
+    </label>
+    <label>Tensão (V):
+      <input type="number" id="tensao" required>
+    </label>
+    <label>Comprimento do circuito (m):
+      <input type="number" id="comprimento" required>
+    </label>
+    <label>Material do condutor:
+      <select id="material">
+        <option value="cobre">Cobre</option>
+        <option value="aluminio">Alumínio</option>
+      </select>
+    </label>
+    <label>Queda de tensão permitida (V):
+      <input type="number" id="queda" required>
+    </label>
+    <label>Tipo de instalação:
+      <select id="tipo">
+        <option value="monofasico">Monofásico</option>
+        <option value="trifasico">Trifásico</option>
+      </select>
+    </label>
+    <button onclick="calcularSecao()">Calcular Seção</button>
+
+    <div class="resultado" id="resultado"></div>
+  </main>
+
+  <footer>
+    <div>Contador de acessos: <span id="contador">0</span></div>
+    <div>&copy; Paulo Amoroso • Engenheiro Elétrico</div>
+  </footer>
+
+  <script>
+    // Contador simples com localStorage
+    const contadorEl = document.getElementById('contador');
+    let visitas = localStorage.getItem('visitas') || 0;
+    visitas++;
+    localStorage.setItem('visitas', visitas);
+    contadorEl.textContent = visitas;
+
+    function calcularCorrente(potencia, tensao, tipo) {
+      return tipo === 'monofasico' ? potencia / tensao : potencia / (Math.sqrt(3) * tensao);
+    }
+
+    function calcularSecaoCondutor(corrente, comprimento, material, queda, tipo) {
+      const gamma = material === 'cobre' ? 56 : 35;
+      return tipo === 'monofasico'
+        ? (2 * comprimento * corrente) / (gamma * queda)
+        : (Math.sqrt(3) * comprimento * corrente) / (gamma * queda);
+    }
+
+    function calcularSecao() {
+      const potencia = parseFloat(document.getElementById('potencia').value);
+      const tensao = parseFloat(document.getElementById('tensao').value);
+      const comprimento = parseFloat(document.getElementById('comprimento').value);
+      const material = document.getElementById('material').value;
+      const queda = parseFloat(document.getElementById('queda').value);
+      const tipo = document.getElementById('tipo').value;
+
+      const corrente = calcularCorrente(potencia, tensao, tipo);
+      const secao = calcularSecaoCondutor(corrente, comprimento, material, queda, tipo);
+
+      document.getElementById('resultado').innerHTML =
+        `Corrente estimada: ${corrente.toFixed(2)} A<br>Seção mínima recomendada: ${secao.toFixed(2)} mm²`;
+    }
+  </script>
+</body>
+</html>
