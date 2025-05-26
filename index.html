@@ -4,10 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Paulo Amoroso - Calculadora de Seção de Condutor</title>
-  <!-- Ícones via CDN (Font Awesome) -->
   <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 700px; margin: auto; }
     header { text-align: center; margin-bottom: 30px; }
     header h1 { margin: 0; }
     header p { color: #555; }
@@ -42,15 +41,29 @@
         <option value="aluminio">Alumínio</option>
       </select>
     </label>
-    <label>Queda de tensão permitida (V):
-      <input type="number" id="queda" required>
-    </label>
     <label>Tipo de instalação:
       <select id="tipo">
         <option value="monofasico">Monofásico</option>
         <option value="trifasico">Trifásico</option>
       </select>
     </label>
+    <label>Modo de cálculo da queda de tensão:
+      <select id="modoqueda" onchange="alternarModoQueda()">
+        <option value="manual">Informar em Volts</option>
+        <option value="percentual">Selecionar Percentual (%)</option>
+      </select>
+    </label>
+    <div id="quedaManual">
+      <label>Queda de tensão permitida (V):
+        <input type="number" id="queda" required>
+      </label>
+    </div>
+    <div id="quedaPercentual" style="display: none;">
+      <label>Percentual de queda (%):
+        <input type="number" id="percentualQueda" value="3">
+      </label>
+    </div>
+
     <button onclick="calcularSecao()">Calcular Seção</button>
 
     <div class="resultado" id="resultado"></div>
@@ -62,12 +75,19 @@
   </footer>
 
   <script>
-    // Contador simples com localStorage
+    const bitolasPadrao = [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120];
+
     const contadorEl = document.getElementById('contador');
     let visitas = localStorage.getItem('visitas') || 0;
     visitas++;
     localStorage.setItem('visitas', visitas);
     contadorEl.textContent = visitas;
+
+    function alternarModoQueda() {
+      const modo = document.getElementById('modoqueda').value;
+      document.getElementById('quedaManual').style.display = modo === 'manual' ? 'block' : 'none';
+      document.getElementById('quedaPercentual').style.display = modo === 'percentual' ? 'block' : 'none';
+    }
 
     function calcularCorrente(potencia, tensao, tipo) {
       return tipo === 'monofasico' ? potencia / tensao : potencia / (Math.sqrt(3) * tensao);
@@ -80,19 +100,39 @@
         : (Math.sqrt(3) * comprimento * corrente) / (gamma * queda);
     }
 
+    function obterBitolaComercial(secaoCalculada) {
+      for (let bitola of bitolasPadrao) {
+        if (bitola >= secaoCalculada) {
+          return bitola;
+        }
+      }
+      return "> 120 mm² (fora dos padrões comuns)";
+    }
+
     function calcularSecao() {
       const potencia = parseFloat(document.getElementById('potencia').value);
       const tensao = parseFloat(document.getElementById('tensao').value);
       const comprimento = parseFloat(document.getElementById('comprimento').value);
       const material = document.getElementById('material').value;
-      const queda = parseFloat(document.getElementById('queda').value);
       const tipo = document.getElementById('tipo').value;
+      const modoQueda = document.getElementById('modoqueda').value;
+
+      let queda;
+      if (modoQueda === 'manual') {
+        queda = parseFloat(document.getElementById('queda').value);
+      } else {
+        const percentual = parseFloat(document.getElementById('percentualQueda').value);
+        queda = tensao * (percentual / 100);
+      }
 
       const corrente = calcularCorrente(potencia, tensao, tipo);
       const secao = calcularSecaoCondutor(corrente, comprimento, material, queda, tipo);
+      const bitolaComercial = obterBitolaComercial(secao);
 
       document.getElementById('resultado').innerHTML =
-        `Corrente estimada: ${corrente.toFixed(2)} A<br>Seção mínima recomendada: ${secao.toFixed(2)} mm²`;
+        `Corrente estimada: ${corrente.toFixed(2)} A<br>` +
+        `Seção mínima calculada: ${secao.toFixed(2)} mm²<br>` +
+        `Bitola comercial recomendada (ABNT/NBR 5410): ${bitolaComercial}`;
     }
   </script>
 </body>
