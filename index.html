@@ -15,6 +15,7 @@
     input, select { width: 100%; padding: 8px; margin-top: 5px; }
     button { margin-top: 20px; padding: 10px 20px; font-size: 16px; cursor: pointer; }
     .resultado { margin-top: 20px; font-weight: bold; }
+    .alerta-baixa-tensao { background: #fff3cd; padding: 10px; border: 1px solid #ffeeba; color: #856404; margin-top: 20px; border-radius: 5px; display: none; }
     footer { margin-top: 40px; text-align: center; color: #777; font-size: 0.9rem; }
   </style>
 </head>
@@ -30,8 +31,11 @@
       <input type="number" id="potencia" required>
     </label>
     <label>Tensão (V):
-      <input type="number" id="tensao" required>
+      <input type="number" id="tensao" required onchange="verificarBaixaTensao()">
     </label>
+    <div class="alerta-baixa-tensao" id="avisoBaixaTensao">
+      ⚠️ Atenção: em sistemas de baixa tensão (12V ou 24V), a queda admissível deve ser muito menor (geralmente até 5%). Recomendamos atenção especial ao dimensionamento dos condutores.
+    </div>
     <label>Comprimento do circuito (m):
       <input type="number" id="comprimento" required>
     </label>
@@ -76,6 +80,8 @@
 
   <script>
     const bitolasPadrao = [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120];
+    const capacidadeCorrenteCobre = {1.5: 18, 2.5: 24, 4: 32, 6: 40, 10: 55, 16: 75, 25: 100, 35: 125, 50: 150, 70: 195, 95: 230, 120: 260};
+    const capacidadeCorrenteAluminio = {1.5: 15, 2.5: 20, 4: 26, 6: 33, 10: 45, 16: 60, 25: 80, 35: 100, 50: 120, 70: 155, 95: 190, 120: 220};
 
     const contadorEl = document.getElementById('contador');
     let visitas = localStorage.getItem('visitas') || 0;
@@ -89,6 +95,11 @@
       document.getElementById('quedaPercentual').style.display = modo === 'percentual' ? 'block' : 'none';
     }
 
+    function verificarBaixaTensao() {
+      const tensao = parseFloat(document.getElementById('tensao').value);
+      document.getElementById('avisoBaixaTensao').style.display = (tensao <= 24) ? 'block' : 'none';
+    }
+
     function calcularCorrente(potencia, tensao, tipo) {
       return tipo === 'monofasico' ? potencia / tensao : potencia / (Math.sqrt(3) * tensao);
     }
@@ -100,10 +111,11 @@
         : (Math.sqrt(3) * comprimento * corrente) / (gamma * queda);
     }
 
-    function obterBitolaComercial(secaoCalculada) {
+    function obterBitolaComercial(secaoCalculada, corrente, material) {
+      const tabela = material === 'cobre' ? capacidadeCorrenteCobre : capacidadeCorrenteAluminio;
       for (let bitola of bitolasPadrao) {
-        if (bitola >= secaoCalculada) {
-          return bitola;
+        if (bitola >= secaoCalculada && tabela[bitola] >= corrente) {
+          return `${bitola} mm²`;
         }
       }
       return "> 120 mm² (fora dos padrões comuns)";
@@ -117,7 +129,7 @@
       const tipo = document.getElementById('tipo').value;
       const modoQueda = document.getElementById('modoqueda').value;
 
-      let queda;
+      let queda = 0;
       if (modoQueda === 'manual') {
         queda = parseFloat(document.getElementById('queda').value);
       } else {
@@ -127,12 +139,12 @@
 
       const corrente = calcularCorrente(potencia, tensao, tipo);
       const secao = calcularSecaoCondutor(corrente, comprimento, material, queda, tipo);
-      const bitolaComercial = obterBitolaComercial(secao);
+      const bitolaComercial = obterBitolaComercial(secao, corrente, material);
 
       document.getElementById('resultado').innerHTML =
         `Corrente estimada: ${corrente.toFixed(2)} A<br>` +
-        `Seção mínima calculada: ${secao.toFixed(2)} mm²<br>` +
-        `Bitola comercial recomendada (ABNT/NBR 5410): ${bitolaComercial}`;
+        `Seção mínima calculada (queda de tensão): ${secao.toFixed(2)} mm²<br>` +
+        `Bitola comercial recomendada (queda + corrente): ${bitolaComercial}`;
     }
   </script>
 </body>
